@@ -1,4 +1,4 @@
-package vernierm.dependency.injection.annotations;
+package vernierm.dependency.injection;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

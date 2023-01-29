@@ -1,4 +1,4 @@
-package vernierm.dependency.injection.demo;
+package vernierm.demo;
 
 import java.util.Map;
 

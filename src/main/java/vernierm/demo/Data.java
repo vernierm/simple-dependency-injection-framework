@@ -1,4 +1,4 @@
-package vernierm.dependency.injection.demo;
+package vernierm.demo;
 
 public class Data {
     private final int id;
