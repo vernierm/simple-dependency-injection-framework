@@ -1,7 +1,9 @@
 package vernierm.demo;
 
-import vernierm.dependency.injection.Autowired;
+import vernierm.dependency.injection.annotations.Autowired;
+import vernierm.dependency.injection.annotations.Component;
 
+@Component
 public class DataService {
     @Autowired
     private DataRepository dataRepository;
