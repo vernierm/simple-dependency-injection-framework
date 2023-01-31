@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -19,33 +18,15 @@ import java.util.stream.Collectors;
 public class ApplicationContext {
     private final Map<Class<?>, Object> objectRegistry = new HashMap<>();
 
-    public ApplicationContext(Class<?> clazz) {
+    public ApplicationContext(Class<?> clazz) throws Exception {
         initializeContext(clazz);
     }
 
-    public <T> T getInstance(Class<T> clazz) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        T t = (T) objectRegistry.get(clazz);
-
-        Field[] declaredFields = clazz.getDeclaredFields();
-        injectAnnotatedFields(t, declaredFields);
-
-        return t;
+    public <T> T getInstance(Class<T> clazz) {
+        return (T) objectRegistry.get(clazz);
     }
 
-    private <T> void injectAnnotatedFields(T t, Field[] declaredFields) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        for (Field field : declaredFields) {
-            if (!field.isAnnotationPresent(Autowired.class)) continue;
-
-            field.setAccessible(true);
-            Class<?> fieldType = field.getType();
-            Object fieldObject = fieldType.getDeclaredConstructor().newInstance();
-
-            field.set(t, fieldObject);
-            injectAnnotatedFields(fieldObject, fieldType.getDeclaredFields());
-        }
-    }
-
-    private void initializeContext(Class<?> clazz) {
+    private void initializeContext(Class<?> clazz) throws Exception {
         if (!clazz.isAnnotationPresent(Configuration.class))
             throw new RuntimeException("Please provide a valid configuration file.");
 
@@ -53,16 +34,39 @@ public class ApplicationContext {
         String packageValue = componentScan.value();
         Set<Class<?>> classes = findClasses(packageValue);
 
-        for (Class<?> aClass : classes) {
-            try {
-                if (aClass.isAnnotationPresent(Component.class)) {
-                    Constructor<?> constructor = aClass.getDeclaredConstructor();
-                    Object o = constructor.newInstance();
-                    objectRegistry.put(aClass, o);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+        for (Class<?> aClass : classes)
+            initializeBeans(aClass);
+
+        for (Class<?> aClass : classes)
+            wireBeans(aClass);
+    }
+
+    private void initializeBeans(Class<?> aClass) {
+        try {
+            if (aClass.isAnnotationPresent(Component.class)) {
+                Constructor<?> constructor = aClass.getDeclaredConstructor();
+                Object o = constructor.newInstance();
+                objectRegistry.put(aClass, o);
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void wireBeans(Class<?> clazz) throws Exception {
+        var o = objectRegistry.get(clazz);
+        var declaredFields = clazz.getDeclaredFields();
+        injectAnnotatedFields(o, declaredFields);
+    }
+
+    private <T> void injectAnnotatedFields(T t, Field[] declaredFields) throws Exception {
+        for (Field field : declaredFields) {
+            if (!field.isAnnotationPresent(Autowired.class)) continue;
+
+            Class<?> fieldType = field.getType();
+            Object fieldObject = objectRegistry.get(fieldType);
+            field.setAccessible(true);
+            field.set(t, fieldObject);
         }
     }
 
